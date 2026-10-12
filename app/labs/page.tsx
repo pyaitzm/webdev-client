@@ -4,6 +4,16 @@ export default function Labs() {
   return (
     <div id="wd-labs">
       <h1>Labs</h1>
+      <h2>Pyait (Ryan) Myat</h2>
+      <p>CS5610 Section 02</p>
+      <a
+        href="https://github.com/pyaitzm/webdev-client"
+        id="wd-github"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        GitHub Repository
+      </a>
       <ul>
         <li>
           <Link href="/labs/lab1">Lab 1: HTML Examples</Link>
