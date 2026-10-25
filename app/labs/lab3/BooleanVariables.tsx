@@ -25,7 +25,8 @@ export default function BooleanVariables() {
       true5 = {true5 + ""} <br />
       false3 = {false3 + ""} <br />
       false4 = {false4 + ""} <br />
-      &quot;123&quot; == 123 gives {("123" == 123) + ""} <br />
+      {/* &quot;123&quot; == 123 gives {("123" == 123) + ""} <br /> */}
+      &quot;123&quot; == 123 gives {(Number("123") == 123) + ""} <br />
       true6 = {true6 + ""} <br />
       <hr />
     </div>
