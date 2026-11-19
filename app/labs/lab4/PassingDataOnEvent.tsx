@@ -3,7 +3,6 @@
 const hello = () => {
   alert("Hello World!");
 };
-
 const lifeIs = (good: string) => {
   alert(good);
 };

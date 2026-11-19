@@ -4,6 +4,7 @@ import { useState } from "react";
 
 export default function Counter() {
   const [count, setCount] = useState(7);
+
   return (
     <div id="wd-counter">
       <h2>Counter: {count}</h2>

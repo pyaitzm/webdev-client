@@ -22,7 +22,7 @@ export default function BooleanStateVariables() {
       </label>
       {done && <div className="mt-2 rounded bg-yellow-100 p-2">Yay! Done</div>}
       <br />
-      <label>
+      <label className="flex items-center gap-2">
         <input
           type="checkbox"
           checked={saved}
@@ -31,7 +31,7 @@ export default function BooleanStateVariables() {
         />
         Saved
       </label>
-      {saved && <div>Saved</div>}
+      {saved && <div className="mt-2 rounded bg-green-100 p-2">Saved</div>}
       <br />
       <label className="flex items-center gap-2">
         <input
@@ -42,9 +42,7 @@ export default function BooleanStateVariables() {
         />
         Urgent
       </label>
-      {urgent && (
-        <div className="mt-2 rounded bg-red-100 p-2">This is urgent!</div>
-      )}
+      {urgent && <div className="mt-2 rounded bg-red-100 p-2">Urgent!</div>}
       <hr />
     </div>
   );

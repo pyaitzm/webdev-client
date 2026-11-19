@@ -13,6 +13,7 @@ export default function ArrayStateVariable() {
   const clearArray = () => {
     setArray([1, 2, 3, 4, 5]);
   };
+
   return (
     <div id="wd-array-state-variables">
       <h2>Array State Variable</h2>

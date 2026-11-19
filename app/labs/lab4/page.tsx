@@ -12,7 +12,11 @@ import ObjectStateVariable from "./ObjectStateVariable";
 import ArrayStateVariable from "./ArrayStateVariable";
 import ParentStateComponent from "./ParentStateComponent";
 import PropDrilling from "./PropDrilling";
-import UrlEncoding from "./profile/UrlEncoding";
+import UrlEncoding from "./UrlEncoding";
+import ContextExamples from "./context/ContextExamples";
+import ZustandExamples from "./zustand/ZustandExamples";
+import ReduxExamples from "./redux/ReduxExamples";
+import Effect from "./Effect";
 
 const sayHello = (message: string) => {
   alert(message);
@@ -39,6 +43,10 @@ export default function Lab4() {
       <ParentStateComponent />
       <PropDrilling />
       <UrlEncoding />
+      <ContextExamples />
+      <ZustandExamples />
+      <ReduxExamples />
+      <Effect />
     </div>
   );
 }

@@ -8,6 +8,7 @@ export default function ObjectStateVariable() {
     age: 24,
     city: "Boston",
   });
+
   return (
     <div id="wd-object-state-variables">
       <h2>Object State Variables</h2>

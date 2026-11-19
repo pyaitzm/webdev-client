@@ -18,6 +18,7 @@ export default function DateStateVariable() {
   const [startDate, setStartDate] = useState(new Date(2026, 0, 15, 10, 30));
   const [dueDate, setDueDate] = useState(new Date(2026, 0, 22, 10, 30));
   const [endDate, setEndDate] = useState(new Date(2026, 0, 20, 10, 30));
+
   return (
     <div id="wd-date-state-variables">
       <h2>Date State Variables</h2>
