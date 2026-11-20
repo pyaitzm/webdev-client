@@ -1,42 +1,105 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAccountContext, type User } from "../AccountContext";
 
 export default function Profile() {
+  const { currentUser } = useAccountContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!currentUser) router.push("/account/signin");
+  }, [currentUser, router]);
+
+  if (!currentUser) return null;
+  return <ProfileForm key={currentUser._id} user={currentUser} />;
+}
+
+function ProfileForm({ user }: { user: User }) {
+  const [profile, setProfile] = useState(user);
+  // Date of birth is retained from the existing interface but isn't in users.json.
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const { setCurrentUser } = useAccountContext();
+  const router = useRouter();
+
+  const signout = () => {
+    setCurrentUser(null);
+    router.push("/account/signin");
+  };
+
   return (
     <div id="wd-profile-screen">
       <h3>Profile</h3>
       <input
-        defaultValue="alice"
-        placeholder="username"
+        id="wd-username"
         className="wd-username"
+        placeholder="username"
+        value={profile.username}
+        onChange={(e) => setProfile({ ...profile, username: e.target.value })}
       />
       <br />
       <input
-        defaultValue="123"
+        id="wd-password"
+        className="wd-password"
         placeholder="password"
         type="password"
-        className="wd-password"
+        value={profile.password}
+        onChange={(e) => setProfile({ ...profile, password: e.target.value })}
       />
-      <br />
-      <input defaultValue="Alice" placeholder="First Name" id="wd-firstname" />
       <br />
       <input
-        defaultValue="Wonderland"
-        placeholder="Last Name"
-        id="wd-lastname"
+        id="wd-firstname"
+        placeholder="First Name"
+        value={profile.firstName}
+        onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
       />
       <br />
-      <input defaultValue="2000-01-01" type="date" id="wd-dob" />
+      <input
+        id="wd-lastname"
+        placeholder="Last Name"
+        value={profile.lastName}
+        onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+      />
       <br />
-      <input defaultValue="alice@wonderland" type="email" id="wd-email" />
+      <input
+        id="wd-dob"
+        type="date"
+        value={dateOfBirth}
+        onChange={(e) => setDateOfBirth(e.target.value)}
+      />
       <br />
-      <select defaultValue="FACULTY" id="wd-role">
+      <input
+        id="wd-email"
+        type="email"
+        placeholder="Email"
+        value={profile.email}
+        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+      />
+      <br />
+      <select
+        id="wd-role"
+        value={profile.role}
+        onChange={(e) => setProfile({ ...profile, role: e.target.value })}
+      >
         <option value="USER">User</option>
         <option value="ADMIN">Admin</option>
         <option value="FACULTY">Faculty</option>
         <option value="STUDENT">Student</option>
+        <option value="TA">TA</option>
       </select>
       <br />
-      <Link href="/account/signin">Sign Out</Link>
+      <button
+        type="button"
+        id="wd-update-profile-btn"
+        onClick={() => setCurrentUser(profile)}
+      >
+        Update
+      </button>
+      <br />
+      <button type="button" onClick={signout} id="wd-signout-btn">
+        Sign out
+      </button>
     </div>
   );
 }

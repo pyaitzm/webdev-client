@@ -1,28 +1,60 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as db from "../../database";
+import { useAccountContext } from "../AccountContext";
 
 export default function Signin() {
+  const [credentials, setCredentials] = useState({
+    username: "",
+    password: "",
+  });
+  const { setCurrentUser } = useAccountContext();
+  const router = useRouter();
+
+  const signin = () => {
+    const user = db.users.find(
+      (u) =>
+        u.username === credentials.username &&
+        u.password === credentials.password,
+    );
+    if (!user) return;
+    setCurrentUser(user);
+    router.push("/dashboard");
+  };
+
   return (
     <div id="wd-signin-screen">
-      <h3>Sign In</h3>
+      <h3>Sign in</h3>
       <input
-        placeholder="username"
+        id="wd-username"
         className="wd-username"
-        defaultValue="ada"
+        placeholder="username"
+        value={credentials.username}
+        onChange={(e) =>
+          setCredentials({ ...credentials, username: e.target.value })
+        }
       />
       <br />
       <input
+        id="wd-password"
+        className="wd-password"
         placeholder="password"
         type="password"
-        className="wd-password"
-        defaultValue="123"
+        value={credentials.password}
+        onChange={(e) =>
+          setCredentials({ ...credentials, password: e.target.value })
+        }
       />
       <br />
-      <Link href="/dashboard" id="wd-signin-btn">
-        Sign In
-      </Link>
+      <button type="button" onClick={signin} id="wd-signin-btn">
+        Sign in
+      </button>
       <br />
       <Link href="/account/signup" id="wd-signup-link">
-        Sign Up
+        Sign up
       </Link>
     </div>
   );
