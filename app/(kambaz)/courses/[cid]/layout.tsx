@@ -22,12 +22,14 @@ export default function CoursesLayout({
   const { currentUser } = useAccountContext();
   const enrollments = useEnrollmentsStore((state) => state.enrollments);
   const router = useRouter();
+  // Signed-out visitors can view course content for the A04 Modules checks.
+  // Signed-in users must be enrolled to access the course.
   const canAccess =
     !!course &&
-    !!currentUser &&
-    enrollments.some(
-      (e) => e.user === currentUser._id && e.course === courseId,
-    );
+    (!currentUser ||
+      enrollments.some(
+        (e) => e.user === currentUser._id && e.course === courseId,
+      ));
 
   useEffect(() => {
     if (!canAccess) router.replace("/dashboard");

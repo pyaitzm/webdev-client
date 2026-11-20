@@ -25,7 +25,7 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
 
   return (
     <div className="wd-dashboard-course w-[300px] max-w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
-      {isEnrolled ? (
+      {!currentUser || isEnrolled ? (
         <Link
           href={`/courses/${course._id}/home`}
           className="wd-dashboard-course-link block text-neutral-900 no-underline"
@@ -66,7 +66,7 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 p-4">
-        {isEnrolled ? (
+        {!currentUser || isEnrolled ? (
           <Link
             href={`/courses/${course._id}/home`}
             className="inline-flex items-center justify-center rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white no-underline"
