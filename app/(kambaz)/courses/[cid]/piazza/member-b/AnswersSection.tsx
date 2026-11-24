@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AnswersProps } from "../shared/componentContracts";
 import type { AnswerKind, PazzaAnswer, PazzaUser } from "../shared/types";
+import AnswerRichTextEditor, { isRichTextBlank } from "./AnswerRichTextEditor";
 
 const displayName = (userId: string, users: PazzaUser[]) => {
   const user = users.find((candidate) => candidate._id === userId);
@@ -28,6 +29,13 @@ export default function AnswersSection({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
 
+  // A selected post can change without this component being remounted.
+  useEffect(() => {
+    setItems(answers);
+    setDraft("");
+    setEditingId(null);
+  }, [post._id, answers]);
+
   const grouped = useMemo(
     () => ({
       instructor: items.filter((answer) => answer.kind === "INSTRUCTOR"),
@@ -43,8 +51,7 @@ export default function AnswersSection({
   };
 
   const addAnswer = () => {
-    const content = draft.trim();
-    if (!content || !currentUser) return;
+    if (isRichTextBlank(draft) || !currentUser) return;
     const now = new Date().toISOString();
     saveItems([
       ...items,
@@ -54,7 +61,7 @@ export default function AnswersSection({
         postId: post._id,
         authorId: currentUser._id,
         kind: isInstructor(currentUser) ? "INSTRUCTOR" : "STUDENT",
-        content,
+        content: draft,
         createdAt: now,
         updatedAt: now,
       },
@@ -80,17 +87,17 @@ export default function AnswersSection({
               </div>
               {editingId === answer._id ? (
                 <div className="mt-2 space-y-2">
-                  <textarea aria-label="Edit answer" className="w-full rounded border border-slate-300 p-2" value={editingContent} onChange={(event) => setEditingContent(event.target.value)} />
+                  <AnswerRichTextEditor label="Edit answer" value={editingContent} onChange={setEditingContent} />
                   <button type="button" className="rounded bg-red-700 px-3 py-1 text-sm font-medium text-white" onClick={() => {
-                    const content = editingContent.trim();
-                    if (!content) return;
+                    const content = editingContent;
+                    if (isRichTextBlank(content)) return;
                     saveItems(items.map((item) => item._id === answer._id ? { ...item, content, updatedAt: new Date().toISOString() } : item));
                     setEditingId(null);
                   }}>Save</button>
                   <button type="button" className="ms-2 text-sm text-slate-600 underline" onClick={() => setEditingId(null)}>Cancel</button>
                 </div>
               ) : (
-                <p className="mt-1 whitespace-pre-wrap text-slate-700">{answer.content}</p>
+                <div className="prose prose-sm mt-1 max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: answer.content }} />
               )}
               {canManage(answer) && editingId !== answer._id ? (
                 <div className="mt-2 flex gap-3 text-sm">
@@ -112,8 +119,8 @@ export default function AnswersSection({
       {canSubmit ? (
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
           <h3 className="font-semibold text-slate-800">Submit an answer</h3>
-          <textarea aria-label="Answer content" className="mt-2 min-h-24 w-full rounded border border-slate-300 p-2" placeholder="Write an answer…" value={draft} onChange={(event) => setDraft(event.target.value)} />
-          <button type="button" className="mt-2 rounded bg-red-700 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400" disabled={!draft.trim()} onClick={addAnswer}>Post Answer</button>
+          <AnswerRichTextEditor label="Answer content" value={draft} onChange={setDraft} />
+          <button type="button" className="mt-2 rounded bg-red-700 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400" disabled={Boolean(isRichTextBlank(draft))} onClick={addAnswer}>Post Answer</button>
         </section>
       ) : (
         <p className="rounded bg-slate-100 p-3 text-sm text-slate-600">Sign in and open a question post to submit an answer.</p>
