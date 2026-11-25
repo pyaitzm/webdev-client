@@ -40,7 +40,7 @@ export default function PazzaNavigationBar({
       {isInstructor && (
         <Link
           href={`/courses/${course._id}/piazza/manage/folders`}
-          className="rounded px-2 py-1 hover:bg-blue-800"
+          className="rounded px-2 py-1 !text-white no-underline hover:bg-blue-800 hover:!text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Manage Class
         </Link>
