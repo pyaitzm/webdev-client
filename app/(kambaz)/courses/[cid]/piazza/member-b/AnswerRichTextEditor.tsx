@@ -6,7 +6,10 @@ import "react-quill-new/dist/quill.snow.css";
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 
 export const isRichTextBlank = (value: string) =>
-  !value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, "").trim();
+  !value
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, "")
+    .trim();
 
 export default function AnswerRichTextEditor({
   value,
@@ -18,7 +21,10 @@ export default function AnswerRichTextEditor({
   label: string;
 }) {
   return (
-    <div aria-label={label} className="mt-2 rounded border border-slate-300 bg-white">
+    <div
+      aria-label={label}
+      className="mt-2 rounded border border-slate-300 bg-white"
+    >
       <ReactQuill
         theme="snow"
         value={value}

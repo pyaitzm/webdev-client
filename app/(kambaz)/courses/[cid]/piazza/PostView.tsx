@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type {
   AnswersProps,
   FollowUpDiscussionsProps,
 } from "./shared/componentContracts";
 import type { PazzaFolder, PazzaUser } from "./shared/types";
+import AnswersSection from "./member-b/AnswersSection";
+import FollowUpDiscussions from "./member-b/FollowUpDiscussions";
 
 type PostViewProps = {
   answersProps: AnswersProps;
   discussionsProps: FollowUpDiscussionsProps;
   folders: PazzaFolder[];
   users: PazzaUser[];
-  /** Member B's components will be supplied in these slots at integration. */
-  answersSection?: ReactNode;
-  discussionsSection?: ReactNode;
 };
 
 function nameOf(user: PazzaUser | undefined): string {
@@ -39,8 +38,6 @@ export default function PostView({
   discussionsProps,
   folders,
   users,
-  answersSection,
-  discussionsSection,
 }: PostViewProps) {
   const { post, currentUser } = answersProps;
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -48,7 +45,9 @@ export default function PostView({
 
   const author = users.find((user) => user._id === post.authorId);
   const isInstructor =
-    currentUser?.role === "FACULTY" || currentUser?.role === "ADMIN";
+    currentUser?.role === "FACULTY" ||
+    currentUser?.role === "TA" ||
+    currentUser?.role === "ADMIN";
   const canModify = Boolean(
     currentUser && (currentUser._id === post.authorId || isInstructor),
   );
@@ -165,32 +164,18 @@ export default function PostView({
 
       {post.type === "QUESTION" && (
         <section aria-label="Answers" className="border-t border-gray-200 pt-5">
-          {answersSection ?? (
-            <div className="rounded border border-dashed border-gray-300 p-4">
-              <h3 className="font-semibold">Student and Instructor Answers</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Member B&apos;s answer component will be connected here at the
-                Day 4 checkpoint.
-                {` (${answersProps.answers.length} sample ${answersProps.answers.length === 1 ? "answer" : "answers"})`}
-              </p>
-            </div>
-          )}
+          <AnswersSection key={post._id} {...answersProps} users={users} />
         </section>
       )}
       <section
         aria-label="Follow-up discussions"
         className="border-t border-gray-200 pt-5"
       >
-        {discussionsSection ?? (
-          <div className="rounded border border-dashed border-gray-300 p-4">
-            <h3 className="font-semibold">Follow-up Discussions</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Member B&apos;s discussions component will be connected here at
-              the Day 4 checkpoint.
-              {` (${discussionsProps.discussions.length} sample ${discussionsProps.discussions.length === 1 ? "discussion" : "discussions"})`}
-            </p>
-          </div>
-        )}
+        <FollowUpDiscussions
+          key={post._id}
+          {...discussionsProps}
+          users={users}
+        />
       </section>
     </article>
   );

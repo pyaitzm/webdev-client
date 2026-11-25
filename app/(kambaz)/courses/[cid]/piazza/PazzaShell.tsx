@@ -12,6 +12,7 @@ import type {
   FollowUpDiscussionsProps,
 } from "./shared/componentContracts";
 import {
+  defaultFolderNames,
   mockPazzaFolders,
   mockPazzaPosts,
   mockPazzaAnswers,
@@ -57,7 +58,17 @@ function CoursePazzaShell({ cid }: { cid: string }) {
       }
     : null;
   const pazzaCourse = { _id: course._id, name: course.name };
-  const folders = mockPazzaFolders.filter((folder) => folder.courseId === cid);
+  const mockFolders = mockPazzaFolders.filter(
+    (folder) => folder.courseId === cid,
+  );
+  // Match the Manage Folders route for courses without existing sample records.
+  const folders = mockFolders.length
+    ? mockFolders
+    : defaultFolderNames.map((name, index) => ({
+        _id: `fixture-${cid}-folder-${index + 1}`,
+        courseId: cid,
+        name,
+      }));
   // Match recipient options to the enrolled users of the current course.
   const enrolledIds = new Set(
     enrollments
