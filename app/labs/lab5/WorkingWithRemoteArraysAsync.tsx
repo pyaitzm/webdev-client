@@ -4,6 +4,7 @@ import * as client from "./client";
 import { useEffect, useState } from "react";
 import { FaPencilAlt, FaPlusCircle, FaTrash } from "react-icons/fa";
 import { TiDelete } from "react-icons/ti";
+import axios from "axios";
 
 type Todo = {
   id: number;
@@ -15,7 +16,7 @@ type Todo = {
 
 export default function WorkingWithRemoteArraysAsync() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [errorMessage, setErrorMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchTodos = async () => {
     setTodos(await client.fetchTodos());
@@ -33,20 +34,26 @@ export default function WorkingWithRemoteArraysAsync() {
     });
     setTodos([...todos, newTodo]);
   };
-  const deleteTodo = async (todo) => {
+  const deleteTodo = async (todo: Todo) => {
     try {
       await client.deleteTodo(todo);
       setTodos(todos.filter((t) => t.id !== todo.id));
     } catch (error) {
-      setErrorMessage(error.response.data.message);
+      if (axios.isAxiosError(error)) {
+        setErrorMessage(
+          error.response?.data?.message ?? "Unable to delete todo",
+        );
+      } else {
+        setErrorMessage("Unable to delete todo");
+      }
     }
   };
-  const editTodo = (todo) => {
+  const editTodo = (todo: Todo) => {
     setTodos(
       todos.map((t) => (t.id === todo.id ? { ...todo, editing: true } : t)),
     );
   };
-  const updateTodo = async (todo) => {
+  const updateTodo = async (todo: Todo) => {
     await client.updateTodo(todo);
     setTodos(todos.map((t) => (t.id === todo.id ? todo : t)));
   };
