@@ -19,3 +19,5 @@ Run `npm ci` and `npx playwright install chromium` once. Run `npx playwright tes
 Run `npx tsc --noEmit` and `npm run build`. To exercise that production build, set `TEST_PRODUCTION=1` and run `npx playwright test` again. The production test server uses port 3038.
 
 The browser tests use local Kambaz fixtures. The store tests inspect the remaining records after cascading deletes, including records hidden from the UI.
+
+Verified on November 26 with local fixture accounts in headless Edge. All six browser scenarios and both store tests passed against the development server and the production build. TypeScript and the production build passed.

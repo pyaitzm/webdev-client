@@ -9,7 +9,6 @@ const note = /Office hours scheduling note/;
 const button = (root: Page | Locator, name: string | RegExp) => root.getByRole("button", { name, exact: true });
 
 async function signIn(page: Page, id: string) {
-  await page.waitForLoadState("networkidle");
   const user = users.find(user => user._id === id)!;
   await page.locator("#wd-username").fill(user.username);
   await page.locator("#wd-password").fill(user.password);
@@ -24,8 +23,15 @@ async function openCourse(page: Page, cid = "RS101") {
   await expect(page.getByRole("heading", { name: "Class at a Glance" })).toBeVisible();
 }
 
+async function openSignIn(page: Page) {
+  await page.goto("/courses/RS101/piazza");
+  await expect(button(page, question)).toBeVisible();
+  await page.locator("#wd-account-link").click();
+  await expect(page).toHaveURL(/\/account\/signin$/);
+}
+
 async function loginCourse(page: Page, id: string) {
-  await page.goto("/account/signin");
+  await openSignIn(page);
   await signIn(page, id);
   await openCourse(page);
 }
@@ -158,7 +164,7 @@ test("guest access, direct folder URL and signed-in student restriction", async 
   page.on("pageerror", error => {
     if (/hydrat|react error #418/i.test(error.message)) hydrationErrors.push(error.message);
   });
-  await page.goto(manageURL, { waitUntil: "networkidle" });
+  await page.goto(manageURL);
   const denied = page.getByRole("heading", { name: "Instructor access required" });
   await expect(denied).toBeVisible();
   await page.locator("#wd-account-link").click();
@@ -171,7 +177,7 @@ test("guest access, direct folder URL and signed-in student restriction", async 
   await page.locator("#wd-course-piazza-link").click();
   await expect(page.getByLabel("Current user")).toHaveText("Tony Stark");
   await expect(page.getByRole("link", { name: "Manage Class" })).toHaveCount(0);
-  await page.goto("/courses/RS101/piazza", { waitUntil: "networkidle" });
+  await page.goto("/courses/RS101/piazza");
   await expect(page.getByLabel("Current user")).toHaveText("Guest");
   await button(page, question).click();
   await expect(page.getByText("Let's compare our diagrams.")).toBeVisible();
@@ -182,7 +188,7 @@ test("guest access, direct folder URL and signed-in student restriction", async 
 });
 
 test("folder management, shared filter and post form, and three-course isolation", async ({ page }) => {
-  await page.goto("/account/signin");
+  await openSignIn(page);
   await signIn(page, "456"); // The TA fixture is initially enrolled in RS101 and RS103.
   await page.locator("#wd-enrollments-toggle").click();
   const aerodynamics = page.locator(".wd-dashboard-course").filter({ hasText: "Aerodynamics" });
