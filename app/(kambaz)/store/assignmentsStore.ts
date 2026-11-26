@@ -1,10 +1,16 @@
 "use client";
 
 import { create } from "zustand";
-import assignmentsJson from "../database/assignments.json";
 
 // The original JSON has no "until" date; retain that field when users add it.
-export type Assignment = (typeof assignmentsJson)[number] & {
+export type Assignment = {
+  _id: string;
+  title: string;
+  course: string;
+  description: string;
+  points: number;
+  due: string;
+  available: string;
   until?: string;
 };
 
@@ -12,19 +18,18 @@ export type AssignmentDraft = Omit<Assignment, "_id">;
 
 type AssignmentsStore = {
   assignments: Assignment[];
-  addAssignment: (assignment: AssignmentDraft) => void;
+  setAssignments: (assignments: Assignment[]) => void;
+  addAssignment: (assignment: Assignment) => void;
   updateAssignment: (assignment: Assignment) => void;
   deleteAssignment: (assignmentId: string) => void;
 };
 
 export const useAssignmentsStore = create<AssignmentsStore>((set) => ({
-  assignments: assignmentsJson,
+  assignments: [],
+  setAssignments: (assignments) => set({ assignments }),
   addAssignment: (assignment) =>
     set((state) => ({
-      assignments: [
-        ...state.assignments,
-        { ...assignment, _id: crypto.randomUUID() },
-      ],
+      assignments: [...state.assignments, assignment],
     })),
   updateAssignment: (assignment) =>
     set((state) => ({

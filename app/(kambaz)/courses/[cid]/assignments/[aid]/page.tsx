@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as client from "../../../client";
 import { useParams, useRouter } from "next/navigation";
 import {
   useAssignmentsStore,
@@ -20,6 +21,22 @@ export default function AssignmentEditor() {
   const { cid, aid } = useParams();
   const courseId = typeof cid === "string" ? cid : "";
   const assignmentId = typeof aid === "string" ? aid : "";
+  return (
+    <Editor
+      key={`${courseId}-${assignmentId}`}
+      courseId={courseId}
+      assignmentId={assignmentId}
+    />
+  );
+}
+
+function Editor({
+  courseId,
+  assignmentId,
+}: {
+  courseId: string;
+  assignmentId: string;
+}) {
   const router = useRouter();
   const assignments = useAssignmentsStore((state) => state.assignments);
   const addAssignment = useAssignmentsStore((state) => state.addAssignment);
@@ -32,28 +49,78 @@ export default function AssignmentEditor() {
   const creating = assignmentId === "new";
   const listUrl = `/courses/${courseId}/assignments`;
 
+  const setAssignments = useAssignmentsStore((state) => state.setAssignments);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    client
+      .findAssignmentsForCourse(courseId)
+      .then((data) => {
+        if (active) setAssignments(data);
+      })
+      .catch(() => {
+        if (active) {
+          setAssignments([]);
+          setError("Unable to load assignments");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [courseId, setAssignments]);
+
+  if (loading) return <p>Loading assignment...</p>;
+  if (error && !existing && !creating) return <p role="alert">{error}</p>;
+
   // Keying the form by the assignment ID gives each editor its own draft.
   if (!courseId || (!creating && !existing)) {
     return <p>Assignment not found.</p>;
   }
 
   return (
-    <AssignmentForm
-      key={`${courseId}-${assignmentId}`}
-      initialAssignment={
-        existing ?? { ...emptyAssignment, _id: "", course: courseId }
-      }
-      onCancel={() => router.push(listUrl)}
-      onSave={(draft) => {
-        if (creating) {
-          const { _id: _unused, ...newAssignment } = draft;
-          addAssignment({ ...newAssignment, course: courseId });
-        } else {
-          updateAssignment({ ...draft, course: courseId });
+    <>
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
+      <AssignmentForm
+        key={`${courseId}-${assignmentId}`}
+        initialAssignment={
+          existing ?? { ...emptyAssignment, _id: "", course: courseId }
         }
-        router.push(listUrl);
-      }}
-    />
+        onCancel={() => router.push(listUrl)}
+        saving={saving}
+        onSave={async (draft) => {
+          if (saving) return;
+          setSaving(true);
+          setError("");
+          try {
+            if (creating) {
+              const created = await client.createAssignmentForCourse(
+                courseId,
+                draft,
+              );
+              addAssignment(created);
+            } else {
+              const saved = await client.updateAssignment(draft);
+              updateAssignment(saved);
+            }
+            router.push(listUrl);
+          } catch {
+            setError("Unable to save assignment");
+          } finally {
+            setSaving(false);
+          }
+        }}
+      />
+    </>
   );
 }
 
@@ -61,10 +128,12 @@ function AssignmentForm({
   initialAssignment,
   onCancel,
   onSave,
+  saving,
 }: {
   initialAssignment: Assignment;
   onCancel: () => void;
-  onSave: (assignment: Assignment) => void;
+  onSave: (assignment: Assignment) => Promise<void>;
+  saving: boolean;
 }) {
   const [assignment, setAssignment] = useState<Assignment>(initialAssignment);
   const inputClass =
@@ -75,7 +144,7 @@ function AssignmentForm({
       id="wd-assignments-editor"
       onSubmit={(e) => {
         e.preventDefault();
-        onSave(assignment);
+        void onSave(assignment);
       }}
     >
       <label htmlFor="wd-name" className="mb-2 block font-medium">
@@ -174,6 +243,7 @@ function AssignmentForm({
         <button
           type="button"
           id="wd-cancel"
+          disabled={saving}
           onClick={onCancel}
           className="rounded border border-neutral-300 bg-neutral-100 px-4 py-2"
         >
@@ -182,6 +252,7 @@ function AssignmentForm({
         <button
           type="submit"
           id="wd-save"
+          disabled={saving}
           className="rounded bg-red-700 px-4 py-2 font-medium text-white"
         >
           Save

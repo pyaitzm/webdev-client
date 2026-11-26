@@ -5,10 +5,11 @@ import { useModulesStore } from "../../../store/modulesStore";
 
 export default function ModuleControlButtons({
   moduleId,
+  onRemoveModule,
 }: {
   moduleId: string;
+  onRemoveModule: (moduleId: string) => Promise<void>;
 }) {
-  const deleteModule = useModulesStore((state) => state.deleteModule);
   const editModule = useModulesStore((state) => state.editModule);
 
   return (
@@ -24,7 +25,7 @@ export default function ModuleControlButtons({
       </button>
       <button
         type="button"
-        onClick={() => deleteModule(moduleId)}
+        onClick={() => onRemoveModule(moduleId)}
         title="Delete module"
         aria-label="Delete module"
         className="cursor-pointer text-red-600"

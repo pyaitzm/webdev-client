@@ -1,21 +1,24 @@
 import { useState } from "react";
-import { useParams } from "next/navigation";
 import { FaPlus } from "react-icons/fa";
-import { useModulesStore } from "../../../store/modulesStore";
 
-export default function ModuleEditor() {
-  const { cid } = useParams();
-  const courseId = typeof cid === "string" ? cid : "";
+export default function ModuleEditor({
+  onAddModule,
+}: {
+  onAddModule: (name: string) => Promise<boolean>;
+}) {
   const [show, setShow] = useState(false);
   const [moduleName, setModuleName] = useState("");
-  const addModule = useModulesStore((state) => state.addModule);
+  const [saving, setSaving] = useState(false);
 
-  function handleAddModule() {
+  async function handleAddModule() {
     const name = moduleName.trim();
-    if (!name || !courseId) return;
-    addModule({ name, course: courseId });
-    setModuleName("");
-    setShow(false);
+    if (!name || saving) return;
+    setSaving(true);
+    if (await onAddModule(name)) {
+      setModuleName("");
+      setShow(false);
+    }
+    setSaving(false);
   }
 
   return (
@@ -76,7 +79,7 @@ export default function ModuleEditor() {
               <button
                 type="button"
                 onClick={handleAddModule}
-                disabled={!moduleName.trim() || !courseId}
+                disabled={!moduleName.trim() || saving}
                 className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                 id="wd-add-module-submit"
               >

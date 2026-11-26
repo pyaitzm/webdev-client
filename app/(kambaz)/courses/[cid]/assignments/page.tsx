@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FaPlus, FaSearch, FaGripVertical, FaEllipsisV } from "react-icons/fa";
+import * as client from "../../client";
 import AssignmentItem from "./AssignmentItem";
 import { useAssignmentsStore } from "../../../store/assignmentsStore";
 
 export default function Assignments() {
   const { cid } = useParams();
   const courseId = typeof cid === "string" ? cid : "";
+  return <AssignmentList key={courseId} courseId={courseId} />;
+}
+
+function AssignmentList({ courseId }: { courseId: string }) {
   const assignments = useAssignmentsStore((state) => state.assignments);
   const deleteAssignment = useAssignmentsStore(
     (state) => state.deleteAssignment,
@@ -17,14 +22,58 @@ export default function Assignments() {
   const [search, setSearch] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  const visibleAssignments = assignments.filter(
-    (a) =>
-      a.course === courseId &&
-      a.title.toLowerCase().includes(search.toLowerCase()),
+  const setAssignments = useAssignmentsStore((state) => state.setAssignments);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    client
+      .findAssignmentsForCourse(courseId)
+      .then((data) => {
+        if (active) setAssignments(data);
+      })
+      .catch(() => {
+        if (active) {
+          setAssignments([]);
+          setError("Unable to load assignments");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [courseId, setAssignments]);
+
+  const onDeleteAssignment = async (assignmentId: string) => {
+    setDeleting(true);
+    setError("");
+    try {
+      await client.deleteAssignment(assignmentId);
+      deleteAssignment(assignmentId);
+      setPendingDeleteId(null);
+    } catch {
+      setError("Unable to delete assignment");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const visibleAssignments = assignments.filter((a) =>
+    a.title.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
     <div id="wd-assignments">
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
+      {loading && <p>Loading assignments...</p>}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-300 pb-5">
         <div className="relative">
           <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -69,13 +118,14 @@ export default function Assignments() {
           <FaEllipsisV className="text-neutral-600" aria-hidden="true" />
         </div>
         <ul id="wd-assignment-list" className="m-0 list-none p-0">
-          {visibleAssignments.map((assignment) => (
-            <AssignmentItem
-              key={assignment._id}
-              assignment={assignment}
-              onDelete={() => setPendingDeleteId(assignment._id)}
-            />
-          ))}
+          {!loading &&
+            visibleAssignments.map((assignment) => (
+              <AssignmentItem
+                key={assignment._id}
+                assignment={assignment}
+                onDelete={() => setPendingDeleteId(assignment._id)}
+              />
+            ))}
         </ul>
       </div>
 
@@ -112,10 +162,8 @@ export default function Assignments() {
                 type="button"
                 id="wd-delete-assignment-confirm"
                 className="rounded bg-red-700 px-4 py-2 text-white"
-                onClick={() => {
-                  deleteAssignment(pendingDeleteId);
-                  setPendingDeleteId(null);
-                }}
+                disabled={deleting}
+                onClick={() => onDeleteAssignment(pendingDeleteId)}
               >
                 Yes, Delete
               </button>

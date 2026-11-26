@@ -2,26 +2,25 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCoursesStore, type Course } from "../store/coursesStore";
-import { useEnrollmentsStore } from "../store/enrollmentsStore";
+import type { Course } from "../store/coursesStore";
 import { useAccountContext } from "../account/AccountContext";
 
 type CourseCardProps = {
   course: Course;
   onEdit: () => void;
+  onDelete: () => void;
+  isEnrolled: boolean;
+  onToggleEnrollment: () => void;
 };
 
-export default function CourseCard({ course, onEdit }: CourseCardProps) {
-  const deleteCourse = useCoursesStore((state) => state.deleteCourse);
+export default function CourseCard({
+  course,
+  onEdit,
+  onDelete,
+  isEnrolled,
+  onToggleEnrollment,
+}: CourseCardProps) {
   const { currentUser } = useAccountContext();
-  const enrollments = useEnrollmentsStore((state) => state.enrollments);
-  const enroll = useEnrollmentsStore((state) => state.enroll);
-  const unenroll = useEnrollmentsStore((state) => state.unenroll);
-  const isEnrolled =
-    !!currentUser &&
-    enrollments.some(
-      (e) => e.user === currentUser._id && e.course === course._id,
-    );
 
   return (
     <div className="wd-dashboard-course w-[300px] max-w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
@@ -83,11 +82,7 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
             <button
               type="button"
               className={`rounded px-3 py-1.5 text-sm font-medium text-white ${isEnrolled ? "bg-red-600" : "bg-green-600"}`}
-              onClick={() =>
-                isEnrolled
-                  ? unenroll(currentUser._id, course._id)
-                  : enroll(currentUser._id, course._id)
-              }
+              onClick={onToggleEnrollment}
             >
               {isEnrolled ? "Unenroll" : "Enroll"}
             </button>
@@ -104,7 +99,7 @@ export default function CourseCard({ course, onEdit }: CourseCardProps) {
             type="button"
             id="wd-delete-course-click"
             className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white"
-            onClick={() => deleteCourse(course._id)}
+            onClick={onDelete}
           >
             Delete
           </button>

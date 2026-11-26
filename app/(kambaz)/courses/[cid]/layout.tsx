@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { FaAlignJustify } from "react-icons/fa6";
 import CourseNavigation from "./Navigation";
 import Breadcrumb from "./Breadcrumb";
-import { useCoursesStore } from "../../store/coursesStore";
-import { useEnrollmentsStore } from "../../store/enrollmentsStore";
+import type { Course } from "../../store/coursesStore";
+import * as client from "../client";
 import { useAccountContext } from "../../account/AccountContext";
 
 export default function CoursesLayout({
@@ -16,26 +16,42 @@ export default function CoursesLayout({
 }>) {
   const { cid } = useParams();
   const courseId = typeof cid === "string" ? cid : "";
-  const courses = useCoursesStore((state) => state.courses);
-  const course = courses.find((c) => c._id === courseId);
+  const [course, setCourse] = useState<Course | undefined>();
+  const [pending, setPending] = useState(true);
+  const [error, setError] = useState("");
   const [showCourseNav, setShowCourseNav] = useState(true);
   const { currentUser } = useAccountContext();
-  const enrollments = useEnrollmentsStore((state) => state.enrollments);
   const router = useRouter();
-  // Signed-out visitors can view course content for the A04 Modules checks.
-  // Signed-in users must be enrolled to access the course.
-  const canAccess =
-    !!course &&
-    (!currentUser ||
-      enrollments.some(
-        (e) => e.user === currentUser._id && e.course === courseId,
-      ));
-
+  // Signed-out visitors retain A04 access; signed-in users need enrollment.
   useEffect(() => {
-    if (!canAccess) router.replace("/dashboard");
-  }, [canAccess, router]);
+    let active = true;
+    setPending(true);
+    setError("");
+    setCourse(undefined);
+    const load = async () => {
+      try {
+        const courses = currentUser
+          ? await client.findMyCourses()
+          : await client.fetchAllCourses();
+        if (!active) return;
+        const found = courses.find((c) => c._id === courseId);
+        if (!found) router.replace("/dashboard");
+        else setCourse(found);
+      } catch {
+        if (active) setError("Unable to load course");
+      } finally {
+        if (active) setPending(false);
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [courseId, currentUser, router]);
 
-  if (!canAccess) return null;
+  if (pending) return null;
+  if (error) return <p role="alert">{error}</p>;
+  if (!course) return null;
 
   return (
     <div id="wd-courses">
