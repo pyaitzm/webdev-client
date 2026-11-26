@@ -21,12 +21,11 @@ export default function AnswersSection({
   post,
   course,
   currentUser,
+  answers: items,
   users = [],
   onAnswersChanged,
 }: Props) {
-  const allAnswers = usePazzaStore((state) => state.answers);
   const setAnswers = usePazzaStore((state) => state.setAnswers);
-  const items = useMemo(() => allAnswers.filter((a) => a.courseId === course._id && a.postId === post._id), [allAnswers, course._id, post._id]);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
@@ -35,7 +34,7 @@ export default function AnswersSection({
   useEffect(() => {
     setDraft("");
     setEditingId(null);
-  }, [post._id]);
+  }, [course._id, post._id, currentUser?._id]);
 
   const grouped = useMemo(
     () => ({
@@ -52,7 +51,7 @@ export default function AnswersSection({
   };
 
   const addAnswer = () => {
-    if (isRichTextBlank(draft) || !currentUser) return;
+    if (post.type !== "QUESTION" || isRichTextBlank(draft) || !currentUser) return;
     const now = new Date().toISOString();
     saveItems([
       ...items,
@@ -100,7 +99,7 @@ export default function AnswersSection({
                   {new Date(answer.createdAt).toLocaleString()}
                 </time>
               </div>
-              {editingId === answer._id ? (
+              {editingId === answer._id && canManage(answer) ? (
                 <div className="mt-2 space-y-2">
                   <AnswerRichTextEditor
                     label="Edit answer"

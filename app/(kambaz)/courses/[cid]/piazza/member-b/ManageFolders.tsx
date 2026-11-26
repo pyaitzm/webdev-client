@@ -10,15 +10,14 @@ type Props = ManageFoldersProps;
 const instructor = (role: string | undefined) =>
   ["FACULTY", "TA", "ADMIN"].includes(role ?? "");
 
-/** Local-state version of the folder administration UI; persistence is added later. */
+/** Store folder records per course and keep unsaved edits in this screen. */
 export default function ManageFolders({
   course,
   currentUser,
+  folders: items,
   onFoldersChanged,
 }: Props) {
-  const allFolders = usePazzaStore((state) => state.folders);
   const setFolders = usePazzaStore((state) => state.setFolders);
-  const items = allFolders.filter((folder) => folder.courseId === course._id);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -82,7 +81,7 @@ export default function ManageFolders({
           disabled={!selected.length}
           onClick={() => {
             if (mockPazzaPosts.some((post) => post.courseId === course._id && post.folderIds.some((id) => selected.includes(id)))) {
-              setNotice("Folders used by posts cannot be deleted until the team agrees how to update those posts.");
+              setNotice("A selected folder is in use. Move its posts before deleting it.");
               return;
             }
             setNotice("");

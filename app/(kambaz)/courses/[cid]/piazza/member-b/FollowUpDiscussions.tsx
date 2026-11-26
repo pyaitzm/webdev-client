@@ -18,16 +18,15 @@ type Props = FollowUpDiscussionsProps & { users?: PazzaUser[] };
 export default function FollowUpDiscussions({
   course,
   post,
+  discussions: discussionItems,
+  replies: replyItems,
   currentUser,
   users = [],
   onDiscussionsChanged,
 }: Props) {
-  const allDiscussions = usePazzaStore((s) => s.discussions);
-  const allReplies = usePazzaStore((s) => s.replies);
   const updateDiscussions = usePazzaStore((s) => s.setDiscussions);
+  const deleteReply = usePazzaStore(state => state.deleteReply);
   const updateReplies = usePazzaStore((s) => s.setReplies);
-  const discussionItems = allDiscussions.filter((d) => d.courseId === course._id && d.postId === post._id);
-  const replyItems = allReplies.filter((r) => r.courseId === course._id && discussionItems.some((d) => d._id === r.discussionId));
   const setDiscussionItems = (items: PazzaDiscussion[]) => updateDiscussions(course._id, post._id, items);
   const setReplyItems = (items: PazzaReply[]) => updateReplies(course._id, post._id, items);
   const [newDiscussion, setNewDiscussion] = useState("");
@@ -44,10 +43,12 @@ export default function FollowUpDiscussions({
 
   // A's PostView can switch posts while keeping this child mounted.
   useEffect(() => {
+    setNewDiscussion("");
+    setReplyDraft("");
     setReplyTarget(null);
     setEditingDiscussionId(null);
     setEditingReplyId(null);
-  }, [post._id]);
+  }, [course._id, post._id, currentUser?._id]);
 
   // Do not leave a reply composer visible after a user signs out.
   useEffect(() => {
@@ -78,16 +79,20 @@ export default function FollowUpDiscussions({
     setNewDiscussion("");
     changed();
   };
+  const activeReplyTarget = replyTarget && discussionItems.some(d => d._id === replyTarget.discussionId)
+    && (replyTarget.parentReplyId === null || replyItems.some(r =>
+      r._id === replyTarget.parentReplyId && r.discussionId === replyTarget.discussionId))
+    ? replyTarget : null;
   const addReply = () => {
-    if (!currentUser || !replyTarget || !replyDraft.trim()) return;
+    if (!currentUser || !activeReplyTarget || !replyDraft.trim()) return;
     const now = new Date().toISOString();
     setReplyItems([
       ...replyItems,
       {
         _id: `reply-${crypto.randomUUID()}`,
         courseId: course._id,
-        discussionId: replyTarget.discussionId,
-        parentReplyId: replyTarget.parentReplyId,
+        discussionId: activeReplyTarget.discussionId,
+        parentReplyId: activeReplyTarget.parentReplyId,
         authorId: currentUser._id,
         content: replyDraft.trim(),
         createdAt: now,
@@ -104,24 +109,6 @@ export default function FollowUpDiscussions({
         reply.discussionId === discussionId &&
         reply.parentReplyId === parentReplyId,
     );
-  const descendantReplyIds = (rootId: string): Set<string> => {
-    const deleted = new Set([rootId]);
-    let found = true;
-    while (found) {
-      found = false;
-      replyItems.forEach((reply) => {
-        if (
-          reply.parentReplyId &&
-          deleted.has(reply.parentReplyId) &&
-          !deleted.has(reply._id)
-        ) {
-          deleted.add(reply._id);
-          found = true;
-        }
-      });
-    }
-    return deleted;
-  };
   const renderReplies = (
     discussionId: string,
     parentReplyId: string | null,
@@ -208,10 +195,7 @@ export default function FollowUpDiscussions({
               type="button"
               className="ms-3 mt-1 text-sm text-red-700 underline"
               onClick={() => {
-                const deleted = descendantReplyIds(reply._id);
-                setReplyItems(
-                  replyItems.filter((item) => !deleted.has(item._id)),
-                );
+                deleteReply(course._id, discussionId, reply._id);
                 changed();
               }}
             >
@@ -357,11 +341,6 @@ export default function FollowUpDiscussions({
                       type="button"
                       className="underline"
                       onClick={() => {
-                        setReplyItems(
-                          replyItems.filter(
-                            (item) => item.discussionId !== discussion._id,
-                          ),
-                        );
                         setDiscussionItems(discussionItems.filter((item) => item._id !== discussion._id));
                         changed();
                       }}
@@ -400,7 +379,7 @@ export default function FollowUpDiscussions({
           </button>
         </div>
       ) : null}
-      {replyTarget && currentUser ? (
+      {activeReplyTarget && currentUser ? (
         <div className="mt-4 rounded bg-slate-50 p-3">
           <label className="block text-sm font-medium" htmlFor="wd-new-reply">
             Reply

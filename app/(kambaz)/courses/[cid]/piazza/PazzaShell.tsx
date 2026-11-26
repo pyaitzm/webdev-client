@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useAccountContext } from "../../../account/AccountContext";
 import { useCoursesStore } from "../../../store/coursesStore";
@@ -11,19 +12,17 @@ import type {
   ClassAtAGlanceData,
   FollowUpDiscussionsProps,
 } from "./shared/componentContracts";
-import {
-  mockPazzaPosts,
-  mockPazzaDiscussions,
-  mockPazzaReplies,
-} from "./shared/mockData";
+import { mockPazzaPosts } from "./shared/mockData";
 import PazzaNavigationBar from "./PazzaNavigationBar";
 import FolderFilters from "./FolderFilters";
-import PostListSidebar from "./PostListSidebar";
 import NewPostForm from "./NewPostForm";
 import PostView from "./PostView";
 import ClassAtAGlance from "./ClassAtAGlance";
 import usersJson from "../../../database/users.json";
 import { usePazzaStore } from "./member-b/pazzaStore";
+
+// The sidebar groups and formats posts in the viewer's local date and time.
+const PostListSidebar = dynamic(() => import("./PostListSidebar"), { ssr: false });
 
 type Screen = "glance" | "new" | "post";
 
@@ -46,6 +45,9 @@ function CoursePazzaShell({ cid }: { cid: string }) {
   const sharedFolders = usePazzaStore((state) => state.folders);
   const sharedAnswers = usePazzaStore((state) => state.answers);
 
+  const discussions = usePazzaStore(state => state.discussions);
+  const replies = usePazzaStore(state => state.replies);
+
   if (!course) return <p>Course not found.</p>;
 
   // Use only public account fields in the Pazza interface.
@@ -58,11 +60,9 @@ function CoursePazzaShell({ cid }: { cid: string }) {
       }
     : null;
   const pazzaCourse = { _id: course._id, name: course.name };
-  const mockFolders = sharedFolders.filter(
+  const folders = sharedFolders.filter(
     (folder) => folder.courseId === cid,
   );
-  // Match the Manage Folders route for courses without existing sample records.
-  const folders = mockFolders;
   // Match recipient options to the enrolled users of the current course.
   const enrolledIds = new Set(
     enrollments
@@ -117,16 +117,17 @@ function CoursePazzaShell({ cid }: { cid: string }) {
         post: selectedPost,
         course: pazzaCourse,
         currentUser: pazzaUser,
-        discussions: mockPazzaDiscussions.filter(
+        discussions: discussions.filter(
           (discussion) =>
             discussion.courseId === cid &&
             discussion.postId === selectedPost._id,
         ),
-        replies: mockPazzaReplies.filter(
+        replies: replies.filter(
           (reply) =>
             reply.courseId === cid &&
-            mockPazzaDiscussions.some(
+            discussions.some(
               (discussion) =>
+                discussion.courseId === cid &&
                 discussion._id === reply.discussionId &&
                 discussion.postId === selectedPost._id,
             ),
