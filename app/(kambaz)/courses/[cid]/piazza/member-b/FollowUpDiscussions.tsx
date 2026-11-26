@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FollowUpDiscussionsProps } from "../shared/componentContracts";
 import type { PazzaDiscussion, PazzaReply, PazzaUser } from "../shared/types";
+import { usePazzaStore } from "./pazzaStore";
 
 const nameFor = (id: string, users: PazzaUser[]) => {
   const user = users.find((candidate) => candidate._id === id);
@@ -18,13 +19,17 @@ export default function FollowUpDiscussions({
   course,
   post,
   currentUser,
-  discussions,
-  replies,
   users = [],
   onDiscussionsChanged,
 }: Props) {
-  const [discussionItems, setDiscussionItems] = useState(discussions);
-  const [replyItems, setReplyItems] = useState(replies);
+  const allDiscussions = usePazzaStore((s) => s.discussions);
+  const allReplies = usePazzaStore((s) => s.replies);
+  const updateDiscussions = usePazzaStore((s) => s.setDiscussions);
+  const updateReplies = usePazzaStore((s) => s.setReplies);
+  const discussionItems = allDiscussions.filter((d) => d.courseId === course._id && d.postId === post._id);
+  const replyItems = allReplies.filter((r) => r.courseId === course._id && discussionItems.some((d) => d._id === r.discussionId));
+  const setDiscussionItems = (items: PazzaDiscussion[]) => updateDiscussions(course._id, post._id, items);
+  const setReplyItems = (items: PazzaReply[]) => updateReplies(course._id, post._id, items);
   const [newDiscussion, setNewDiscussion] = useState("");
   const [replyTarget, setReplyTarget] = useState<{
     discussionId: string;
@@ -39,12 +44,10 @@ export default function FollowUpDiscussions({
 
   // A's PostView can switch posts while keeping this child mounted.
   useEffect(() => {
-    setDiscussionItems(discussions);
-    setReplyItems(replies);
     setReplyTarget(null);
     setEditingDiscussionId(null);
     setEditingReplyId(null);
-  }, [post._id, discussions, replies]);
+  }, [post._id]);
 
   // Do not leave a reply composer visible after a user signs out.
   useEffect(() => {
@@ -354,16 +357,12 @@ export default function FollowUpDiscussions({
                       type="button"
                       className="underline"
                       onClick={() => {
-                        setDiscussionItems(
-                          discussionItems.filter(
-                            (item) => item._id !== discussion._id,
-                          ),
-                        );
                         setReplyItems(
                           replyItems.filter(
                             (item) => item.discussionId !== discussion._id,
                           ),
                         );
+                        setDiscussionItems(discussionItems.filter((item) => item._id !== discussion._id));
                         changed();
                       }}
                     >

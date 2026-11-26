@@ -12,10 +12,7 @@ import type {
   FollowUpDiscussionsProps,
 } from "./shared/componentContracts";
 import {
-  defaultFolderNames,
-  mockPazzaFolders,
   mockPazzaPosts,
-  mockPazzaAnswers,
   mockPazzaDiscussions,
   mockPazzaReplies,
 } from "./shared/mockData";
@@ -26,6 +23,7 @@ import NewPostForm from "./NewPostForm";
 import PostView from "./PostView";
 import ClassAtAGlance from "./ClassAtAGlance";
 import usersJson from "../../../database/users.json";
+import { usePazzaStore } from "./member-b/pazzaStore";
 
 type Screen = "glance" | "new" | "post";
 
@@ -45,6 +43,8 @@ function CoursePazzaShell({ cid }: { cid: string }) {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [newPostFolderIds, setNewPostFolderIds] = useState<string[]>([]);
+  const sharedFolders = usePazzaStore((state) => state.folders);
+  const sharedAnswers = usePazzaStore((state) => state.answers);
 
   if (!course) return <p>Course not found.</p>;
 
@@ -58,17 +58,11 @@ function CoursePazzaShell({ cid }: { cid: string }) {
       }
     : null;
   const pazzaCourse = { _id: course._id, name: course.name };
-  const mockFolders = mockPazzaFolders.filter(
+  const mockFolders = sharedFolders.filter(
     (folder) => folder.courseId === cid,
   );
   // Match the Manage Folders route for courses without existing sample records.
-  const folders = mockFolders.length
-    ? mockFolders
-    : defaultFolderNames.map((name, index) => ({
-        _id: `fixture-${cid}-folder-${index + 1}`,
-        courseId: cid,
-        name,
-      }));
+  const folders = mockFolders;
   // Match recipient options to the enrolled users of the current course.
   const enrolledIds = new Set(
     enrollments
@@ -99,7 +93,7 @@ function CoursePazzaShell({ cid }: { cid: string }) {
   const glanceData: ClassAtAGlanceData = {
     course: pazzaCourse,
     posts: authorizedPosts,
-    answers: mockPazzaAnswers.filter(
+    answers: sharedAnswers.filter(
       (answer) => answer.courseId === cid && visiblePostIds.has(answer.postId),
     ),
     enrolledStudentCount: courseUsers.filter((user) => user.role === "STUDENT")
@@ -112,7 +106,7 @@ function CoursePazzaShell({ cid }: { cid: string }) {
         post: selectedPost,
         course: pazzaCourse,
         currentUser: pazzaUser,
-        answers: mockPazzaAnswers.filter(
+        answers: sharedAnswers.filter(
           (answer) =>
             answer.courseId === cid && answer.postId === selectedPost._id,
         ),

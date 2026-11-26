@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AnswersProps } from "../shared/componentContracts";
 import type { AnswerKind, PazzaAnswer, PazzaUser } from "../shared/types";
 import AnswerRichTextEditor, { isRichTextBlank } from "./AnswerRichTextEditor";
+import { usePazzaStore } from "./pazzaStore";
 
 const displayName = (userId: string, users: PazzaUser[]) => {
   const user = users.find((candidate) => candidate._id === userId);
@@ -20,21 +21,21 @@ export default function AnswersSection({
   post,
   course,
   currentUser,
-  answers,
   users = [],
   onAnswersChanged,
 }: Props) {
-  const [items, setItems] = useState(answers);
+  const allAnswers = usePazzaStore((state) => state.answers);
+  const setAnswers = usePazzaStore((state) => state.setAnswers);
+  const items = useMemo(() => allAnswers.filter((a) => a.courseId === course._id && a.postId === post._id), [allAnswers, course._id, post._id]);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
 
   // A selected post can change without this component being remounted.
   useEffect(() => {
-    setItems(answers);
     setDraft("");
     setEditingId(null);
-  }, [post._id, answers]);
+  }, [post._id]);
 
   const grouped = useMemo(
     () => ({
@@ -46,7 +47,7 @@ export default function AnswersSection({
 
   const canSubmit = Boolean(currentUser && post.type === "QUESTION");
   const saveItems = (next: PazzaAnswer[]) => {
-    setItems(next);
+    setAnswers(course._id, post._id, next);
     onAnswersChanged?.();
   };
 
@@ -71,7 +72,7 @@ export default function AnswersSection({
 
   const canManage = (answer: PazzaAnswer) =>
     currentUser &&
-    (answer.authorId === currentUser._id || isInstructor(currentUser));
+    (isInstructor(currentUser) || (answer.kind === "STUDENT" && answer.authorId === currentUser._id));
 
   const renderGroup = (
     title: string,
@@ -172,6 +173,7 @@ export default function AnswersSection({
     </section>
   );
 
+  if (post.type !== "QUESTION") return null;
   return (
     <div id="wd-pazza-answers" className="space-y-4">
       {renderGroup("Instructor Answers", "INSTRUCTOR", grouped.instructor)}

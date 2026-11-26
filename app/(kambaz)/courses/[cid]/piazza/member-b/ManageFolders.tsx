@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ManageFoldersProps } from "../shared/componentContracts";
 import type { PazzaFolder } from "../shared/types";
+import { usePazzaStore } from "./pazzaStore";
+import { mockPazzaPosts } from "../shared/mockData";
 
 type Props = ManageFoldersProps;
 const instructor = (role: string | undefined) =>
@@ -12,23 +14,20 @@ const instructor = (role: string | undefined) =>
 export default function ManageFolders({
   course,
   currentUser,
-  folders,
   onFoldersChanged,
 }: Props) {
-  const [items, setItems] = useState(
-    folders.filter((folder) => folder.courseId === course._id),
-  );
+  const allFolders = usePazzaStore((state) => state.folders);
+  const setFolders = usePazzaStore((state) => state.setFolders);
+  const items = allFolders.filter((folder) => folder.courseId === course._id);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  useEffect(
-    () => setItems(folders.filter((folder) => folder.courseId === course._id)),
-    [course._id, folders],
-  );
+  const [notice, setNotice] = useState("");
   const canManage = instructor(currentUser?.role);
   const save = (next: PazzaFolder[]) => {
-    setItems(next);
+    if (!canManage) return;
+    setFolders(course._id, next);
     onFoldersChanged?.();
   };
   if (!canManage)
@@ -47,6 +46,7 @@ export default function ManageFolders({
     >
       <h2 className="text-xl font-semibold">Manage Folders</h2>
       <p className="mt-1 text-sm text-slate-500">Folders for {course.name}</p>
+      {notice && <p role="alert" className="mt-2 text-sm text-red-700">{notice}</p>}
       <div className="mt-4 flex gap-2">
         <input
           aria-label="New folder name"
@@ -81,6 +81,11 @@ export default function ManageFolders({
           className="rounded border border-red-700 px-3 py-2 text-sm text-red-700 disabled:border-slate-300 disabled:text-slate-400"
           disabled={!selected.length}
           onClick={() => {
+            if (mockPazzaPosts.some((post) => post.courseId === course._id && post.folderIds.some((id) => selected.includes(id)))) {
+              setNotice("Folders used by posts cannot be deleted until the team agrees how to update those posts.");
+              return;
+            }
+            setNotice("");
             save(items.filter((folder) => !selected.includes(folder._id)));
             setSelected([]);
           }}
