@@ -4,8 +4,8 @@ import { useParams } from "next/navigation";
 import { useAccountContext } from "../../../../../account/AccountContext";
 import { useCoursesStore } from "../../../../../store/coursesStore";
 import ManageClass from "../../member-b/ManageClass";
-import { defaultFolderNames, mockPazzaFolders } from "../../shared/mockData";
-import type { PazzaFolder, PazzaUser } from "../../shared/types";
+import { usePazzaStore } from "../../member-b/pazzaStore";
+import type { PazzaUser } from "../../shared/types";
 
 /** Use the existing Kambaz account, without exposing its password to Pazza. */
 function toPazzaUser(
@@ -28,6 +28,7 @@ export default function ManageFoldersPage() {
   const { currentUser } = useAccountContext();
   const course = courses.find((item) => item._id === courseId);
   const user = toPazzaUser(currentUser);
+  const folders = usePazzaStore((state) => state.folders);
 
   if (!course) {
     return (
@@ -50,24 +51,12 @@ export default function ManageFoldersPage() {
     );
   }
 
-  // Preserve the existing RS101/RS102 fixtures; provide the same default folders
-  // for other Kambaz courses without changing the shared mock-data contracts.
-  const courseFolders = mockPazzaFolders.filter(
-    (folder) => folder.courseId === courseId,
-  );
-  const folders: PazzaFolder[] = courseFolders.length
-    ? courseFolders
-    : defaultFolderNames.map((name, index) => ({
-        _id: `fixture-${courseId}-folder-${index + 1}`,
-        courseId,
-        name,
-      }));
-
   return (
     <ManageClass
+      key={courseId}
       course={{ _id: course._id, name: course.name }}
       currentUser={user}
-      folders={folders}
+      folders={folders.filter((folder) => folder.courseId === courseId)}
     />
   );
 }

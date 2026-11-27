@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   AnswersProps,
   FollowUpDiscussionsProps,
 } from "./shared/componentContracts";
 import type { PazzaFolder, PazzaUser } from "./shared/types";
+import { normalizeSummary } from "./shared/normalizeSummary";
+import { sanitizePostDetails } from "./shared/sanitizeRichText";
 import AnswersSection from "./member-b/AnswersSection";
 import FollowUpDiscussions from "./member-b/FollowUpDiscussions";
 
@@ -14,23 +16,12 @@ type PostViewProps = {
   discussionsProps: FollowUpDiscussionsProps;
   folders: PazzaFolder[];
   users: PazzaUser[];
+  onEdit: () => void;
+  onDelete: () => void;
 };
 
 function nameOf(user: PazzaUser | undefined): string {
   return user ? `${user.firstName} ${user.lastName}` : "Unknown user";
-}
-
-/** Display the text in trusted mock HTML without executing its markup. */
-function textFromMockHtml(html: string): string {
-  return html
-    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
-    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .trim();
 }
 
 export default function PostView({
@@ -38,10 +29,22 @@ export default function PostView({
   discussionsProps,
   folders,
   users,
+  onEdit,
+  onDelete,
 }: PostViewProps) {
   const { post, currentUser } = answersProps;
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [formattedDetails, setFormattedDetails] = useState({
+    source: "",
+    html: "",
+  });
+
+  useEffect(() => {
+    setFormattedDetails({
+      source: post.details,
+      html: sanitizePostDetails(post.details),
+    });
+  }, [post.details]);
 
   const author = users.find((user) => user._id === post.authorId);
   const isInstructor =
@@ -55,11 +58,10 @@ export default function PostView({
     post.folderIds.includes(folder._id),
   );
 
-  function previewAction(action: "Edit" | "Delete") {
+  function handleAction(action: "Edit" | "Delete") {
     setActionsOpen(false);
-    setNotice(
-      `${action} will be implemented during Days 5–7. This sample post has not changed.`,
-    );
+    if (action === "Edit") onEdit();
+    else onDelete();
   }
 
   return (
@@ -71,14 +73,14 @@ export default function PostView({
               {post.type === "QUESTION" ? "Question" : "Note"}
             </p>
             <h2 className="break-words text-xl font-semibold">
-              {post.summary}
+              {normalizeSummary(post.summary)}
             </h2>
           </div>
           {canModify && (
             <div className="flex items-start gap-2">
               <button
                 type="button"
-                onClick={() => previewAction("Edit")}
+                onClick={() => handleAction("Edit")}
                 className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
               >
                 Edit
@@ -102,7 +104,7 @@ export default function PostView({
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => previewAction("Edit")}
+                      onClick={() => handleAction("Edit")}
                       className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-100"
                     >
                       Edit
@@ -110,7 +112,7 @@ export default function PostView({
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => previewAction("Delete")}
+                      onClick={() => handleAction("Delete")}
                       className="block w-full rounded px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
                     >
                       Delete
@@ -149,19 +151,19 @@ export default function PostView({
 
       <section
         aria-label="Post details"
-        className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-800"
+        className="break-words text-sm text-gray-800"
       >
-        {textFromMockHtml(post.details)}
+        {formattedDetails.source === post.details ? (
+          <div
+            className="space-y-2"
+            dangerouslySetInnerHTML={{ __html: formattedDetails.html }}
+          />
+        ) : (
+          <p className="whitespace-pre-wrap">
+            {normalizeSummary(post.details.replace(/<[^>]*>/g, " "))}
+          </p>
+        )}
       </section>
-      {notice && (
-        <p
-          role="status"
-          className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"
-        >
-          {notice}
-        </p>
-      )}
-
       {post.type === "QUESTION" && (
         <section aria-label="Answers" className="border-t border-gray-200 pt-5">
           <AnswersSection key={post._id} {...answersProps} users={users} />

@@ -1,33 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useAccountContext } from "../../../account/AccountContext";
 import { useCoursesStore } from "../../../store/coursesStore";
 import { useEnrollmentsStore } from "../../../store/enrollmentsStore";
-import type { PazzaUser } from "./shared/types";
+import {
+  canModifyPost,
+  canViewPost,
+  usePazzaPostsStore,
+} from "./store/postsStore";
+import type { PazzaPost, PazzaUser } from "./shared/types";
 import type {
   AnswersProps,
   ClassAtAGlanceData,
   FollowUpDiscussionsProps,
 } from "./shared/componentContracts";
-import {
-  defaultFolderNames,
-  mockPazzaFolders,
-  mockPazzaPosts,
-  mockPazzaAnswers,
-  mockPazzaDiscussions,
-  mockPazzaReplies,
-} from "./shared/mockData";
 import PazzaNavigationBar from "./PazzaNavigationBar";
 import FolderFilters from "./FolderFilters";
-import PostListSidebar from "./PostListSidebar";
+import { usePazzaStore } from "./member-b/pazzaStore";
+// Date labels depend on the browser timezone. Avoid hydration mismatches.
+const PostListSidebar = dynamic(() => import("./PostListSidebar"), {
+  ssr: false,
+});
 import NewPostForm from "./NewPostForm";
 import PostView from "./PostView";
 import ClassAtAGlance from "./ClassAtAGlance";
 import usersJson from "../../../database/users.json";
 
-type Screen = "glance" | "new" | "post";
+type Screen = "glance" | "new" | "post" | "edit";
 
 export default function PazzaShell() {
   const { cid } = useParams<{ cid: string }>();
@@ -41,6 +43,15 @@ function CoursePazzaShell({ cid }: { cid: string }) {
   );
   const { currentUser } = useAccountContext();
   const enrollments = useEnrollmentsStore((state) => state.enrollments);
+  const posts = usePazzaPostsStore((state) => state.posts);
+  const addPost = usePazzaPostsStore((state) => state.addPost);
+  const openPost = usePazzaPostsStore((state) => state.openPost);
+  const updatePost = usePazzaPostsStore((state) => state.updatePost);
+  const deletePost = usePazzaPostsStore((state) => state.deletePost);
+  const sharedFolders = usePazzaStore((state) => state.folders);
+  const sharedAnswers = usePazzaStore((state) => state.answers);
+  const sharedDiscussions = usePazzaStore((state) => state.discussions);
+  const sharedReplies = usePazzaStore((state) => state.replies);
   const [screen, setScreen] = useState<Screen>("glance");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -58,17 +69,7 @@ function CoursePazzaShell({ cid }: { cid: string }) {
       }
     : null;
   const pazzaCourse = { _id: course._id, name: course.name };
-  const mockFolders = mockPazzaFolders.filter(
-    (folder) => folder.courseId === cid,
-  );
-  // Match the Manage Folders route for courses without existing sample records.
-  const folders = mockFolders.length
-    ? mockFolders
-    : defaultFolderNames.map((name, index) => ({
-        _id: `fixture-${cid}-folder-${index + 1}`,
-        courseId: cid,
-        name,
-      }));
+  const folders = sharedFolders.filter((folder) => folder.courseId === cid);
   // Match recipient options to the enrolled users of the current course.
   const enrolledIds = new Set(
     enrollments
@@ -83,38 +84,40 @@ function CoursePazzaShell({ cid }: { cid: string }) {
       lastName: user.lastName,
       role: user.role as PazzaUser["role"],
     }));
-  const authorizedPosts = mockPazzaPosts.filter(
-    (post) =>
-      post.courseId === cid &&
-      (post.audience === "ENTIRE_CLASS" ||
-        (pazzaUser !== null &&
-          (post.authorId === pazzaUser._id ||
-            post.recipientIds.includes(pazzaUser._id)))),
+  const authorizedPosts = posts.filter((post) =>
+    canViewPost(post, pazzaUser, cid),
   );
   const visiblePosts = authorizedPosts.filter(
     (post) =>
       selectedFolderId === null || post.folderIds.includes(selectedFolderId),
   );
   const visiblePostIds = new Set(authorizedPosts.map((post) => post._id));
+  // Both the Post Screen and statistics use the same live answers.
+  const courseAnswers = sharedAnswers.filter(
+    (answer) => answer.courseId === cid && visiblePostIds.has(answer.postId),
+  );
   const glanceData: ClassAtAGlanceData = {
     course: pazzaCourse,
     posts: authorizedPosts,
-    answers: mockPazzaAnswers.filter(
-      (answer) => answer.courseId === cid && visiblePostIds.has(answer.postId),
-    ),
+    answers: courseAnswers,
     enrolledStudentCount: courseUsers.filter((user) => user.role === "STUDENT")
       .length,
     currentUser: pazzaUser,
   };
-  const selectedPost = visiblePosts.find((post) => post._id === selectedPostId);
+  const selectedPost = authorizedPosts.find(
+    (post) => post._id === selectedPostId,
+  );
+  const editingPost =
+    screen === "edit" && selectedPost && canModifyPost(selectedPost, pazzaUser)
+      ? selectedPost
+      : null;
   const answersProps: AnswersProps | null = selectedPost
     ? {
         post: selectedPost,
         course: pazzaCourse,
         currentUser: pazzaUser,
-        answers: mockPazzaAnswers.filter(
-          (answer) =>
-            answer.courseId === cid && answer.postId === selectedPost._id,
+        answers: courseAnswers.filter(
+          (answer) => answer.postId === selectedPost._id,
         ),
       }
     : null;
@@ -123,15 +126,15 @@ function CoursePazzaShell({ cid }: { cid: string }) {
         post: selectedPost,
         course: pazzaCourse,
         currentUser: pazzaUser,
-        discussions: mockPazzaDiscussions.filter(
+        discussions: sharedDiscussions.filter(
           (discussion) =>
             discussion.courseId === cid &&
             discussion.postId === selectedPost._id,
         ),
-        replies: mockPazzaReplies.filter(
+        replies: sharedReplies.filter(
           (reply) =>
             reply.courseId === cid &&
-            mockPazzaDiscussions.some(
+            sharedDiscussions.some(
               (discussion) =>
                 discussion._id === reply.discussionId &&
                 discussion.postId === selectedPost._id,
@@ -174,6 +177,9 @@ function CoursePazzaShell({ cid }: { cid: string }) {
           users={courseUsers}
           selectedPostId={screen === "post" ? selectedPostId : null}
           onSelectPost={(postId) => {
+            // Clicking the already-open post does not represent another opening.
+            if (screen === "post" && selectedPostId === postId) return;
+            if (!openPost(postId, cid, pazzaUser)) return;
             setSelectedPostId(postId);
             setScreen("post");
           }}
@@ -184,16 +190,37 @@ function CoursePazzaShell({ cid }: { cid: string }) {
         />
         <main className="min-w-0 flex-1 p-5">
           {screen === "glance" && <ClassAtAGlance {...glanceData} />}
-          {screen === "new" && (
+          {(screen === "new" || editingPost) && (
             <NewPostForm
-              key={cid}
+              key={editingPost?._id ?? `new-${cid}`}
+              initialPost={editingPost ?? undefined}
               folders={folders}
               users={courseUsers}
+              courseId={cid}
+              currentUser={pazzaUser}
+              onUpdatePost={(post: PazzaPost) => {
+                if (!updatePost(post, pazzaUser)) return;
+                setSelectedFolderId(null);
+                setSelectedPostId(post._id);
+                setScreen("post");
+              }}
+              onCreatePost={(post: PazzaPost) => {
+                addPost(post);
+                // The newly published post is immediately opened in PostView.
+                openPost(post._id, cid, pazzaUser);
+                setSelectedFolderId(null);
+                setSelectedPostId(post._id);
+                setScreen("post");
+              }}
               selectedFolderIds={newPostFolderIds}
               onChange={setNewPostFolderIds}
               onCancel={() => {
                 setNewPostFolderIds([]);
-                showGlance();
+                if (editingPost) {
+                  setScreen("post");
+                } else {
+                  showGlance();
+                }
               }}
             />
           )}
@@ -203,6 +230,25 @@ function CoursePazzaShell({ cid }: { cid: string }) {
             discussionsProps && (
               <PostView
                 key={selectedPost._id}
+                onEdit={() => {
+                  if (!canModifyPost(selectedPost, pazzaUser)) return;
+                  setNewPostFolderIds([...selectedPost.folderIds]);
+                  setScreen("edit");
+                }}
+                onDelete={() => {
+                  if (!canModifyPost(selectedPost, pazzaUser)) return;
+                  if (
+                    !window.confirm("Delete this post? This cannot be undone.")
+                  )
+                    return;
+                  if (!deletePost(selectedPost._id, pazzaUser)) return;
+                  // Delete only records belonging to this successfully deleted post.
+                  usePazzaStore
+                    .getState()
+                    .removePostData(cid, selectedPost._id);
+                  setNewPostFolderIds([]);
+                  showGlance();
+                }}
                 answersProps={answersProps}
                 discussionsProps={discussionsProps}
                 folders={folders}

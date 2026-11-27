@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { AnswersProps } from "../shared/componentContracts";
 import type { AnswerKind, PazzaAnswer, PazzaUser } from "../shared/types";
 import AnswerRichTextEditor, { isRichTextBlank } from "./AnswerRichTextEditor";
+import { usePazzaStore } from "./pazzaStore";
+import { sanitizePostDetails } from "../shared/sanitizeRichText";
 
 const displayName = (userId: string, users: PazzaUser[]) => {
   const user = users.find((candidate) => candidate._id === userId);
@@ -15,26 +17,41 @@ const isInstructor = (user: PazzaUser | null) =>
 
 type Props = AnswersProps & { users?: PazzaUser[] };
 
+/** Render sanitized rich text after hydration; never insert raw answer HTML. */
+function SafeAnswerContent({ content }: { content: string }) {
+  const [rendered, setRendered] = useState({ source: "", html: "" });
+  useEffect(() => {
+    setRendered({ source: content, html: sanitizePostDetails(content) });
+  }, [content]);
+  return rendered.source === content ? (
+    <div
+      className="mt-1 max-w-none text-slate-700"
+      dangerouslySetInnerHTML={{ __html: rendered.html }}
+    />
+  ) : (
+    <div className="mt-1 text-slate-700">Loading formatted answer…</div>
+  );
+}
+
 /** UI-only Day 2–4 answer section. API persistence is added in the next project phase. */
 export default function AnswersSection({
   post,
   course,
   currentUser,
-  answers,
+  answers: items,
   users = [],
   onAnswersChanged,
 }: Props) {
-  const [items, setItems] = useState(answers);
+  const setAnswers = usePazzaStore((state) => state.setAnswers);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
 
   // A selected post can change without this component being remounted.
   useEffect(() => {
-    setItems(answers);
     setDraft("");
     setEditingId(null);
-  }, [post._id, answers]);
+  }, [course._id, post._id, currentUser?._id]);
 
   const grouped = useMemo(
     () => ({
@@ -46,12 +63,13 @@ export default function AnswersSection({
 
   const canSubmit = Boolean(currentUser && post.type === "QUESTION");
   const saveItems = (next: PazzaAnswer[]) => {
-    setItems(next);
+    setAnswers(course._id, post._id, next);
     onAnswersChanged?.();
   };
 
   const addAnswer = () => {
-    if (isRichTextBlank(draft) || !currentUser) return;
+    if (post.type !== "QUESTION" || isRichTextBlank(draft) || !currentUser)
+      return;
     const now = new Date().toISOString();
     saveItems([
       ...items,
@@ -71,7 +89,8 @@ export default function AnswersSection({
 
   const canManage = (answer: PazzaAnswer) =>
     currentUser &&
-    (answer.authorId === currentUser._id || isInstructor(currentUser));
+    (isInstructor(currentUser) ||
+      (answer.kind === "STUDENT" && answer.authorId === currentUser._id));
 
   const renderGroup = (
     title: string,
@@ -99,7 +118,7 @@ export default function AnswersSection({
                   {new Date(answer.createdAt).toLocaleString()}
                 </time>
               </div>
-              {editingId === answer._id ? (
+              {editingId === answer._id && canManage(answer) ? (
                 <div className="mt-2 space-y-2">
                   <AnswerRichTextEditor
                     label="Edit answer"
@@ -137,10 +156,7 @@ export default function AnswersSection({
                   </button>
                 </div>
               ) : (
-                <div
-                  className="prose prose-sm mt-1 max-w-none text-slate-700"
-                  dangerouslySetInnerHTML={{ __html: answer.content }}
-                />
+                <SafeAnswerContent content={answer.content} />
               )}
               {canManage(answer) && editingId !== answer._id ? (
                 <div className="mt-2 flex gap-3 text-sm">
@@ -172,6 +188,7 @@ export default function AnswersSection({
     </section>
   );
 
+  if (post.type !== "QUESTION") return null;
   return (
     <div id="wd-pazza-answers" className="space-y-4">
       {renderGroup("Instructor Answers", "INSTRUCTOR", grouped.instructor)}

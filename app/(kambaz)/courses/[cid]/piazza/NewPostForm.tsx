@@ -2,11 +2,22 @@
 
 import { useState, type FormEvent } from "react";
 import type { FolderSelectionProps } from "./shared/componentContracts";
-import type { PazzaUser, PostAudience, PostType } from "./shared/types";
+import type {
+  PazzaPost,
+  PazzaUser,
+  PostAudience,
+  PostType,
+} from "./shared/types";
 import RichTextEditor from "./RichTextEditor";
+import { normalizeSummary } from "./shared/normalizeSummary";
 
 type NewPostFormProps = FolderSelectionProps & {
   users: PazzaUser[];
+  courseId: string;
+  currentUser: PazzaUser | null;
+  onCreatePost: (post: PazzaPost) => void;
+  initialPost?: PazzaPost;
+  onUpdatePost?: (post: PazzaPost) => void;
   onCancel: () => void;
 };
 
@@ -18,20 +29,31 @@ export default function NewPostForm({
   selectedFolderIds,
   onChange,
   users,
+  courseId,
+  currentUser,
+  onCreatePost,
+  initialPost,
+  onUpdatePost,
   onCancel,
 }: NewPostFormProps) {
-  const [type, setType] = useState<PostType>("QUESTION");
-  const [audience, setAudience] = useState<PostAudience>("ENTIRE_CLASS");
-  const [recipientIds, setRecipientIds] = useState<string[]>([]);
-  const [summary, setSummary] = useState("");
-  const [details, setDetails] = useState("");
-  const [notice, setNotice] = useState(false);
+  const [type, setType] = useState<PostType>(initialPost?.type ?? "QUESTION");
+  const [audience, setAudience] = useState<PostAudience>(
+    initialPost?.audience ?? "ENTIRE_CLASS",
+  );
+  const [recipientIds, setRecipientIds] = useState<string[]>(
+    initialPost?.recipientIds ?? [],
+  );
+  const [summary, setSummary] = useState(initialPost?.summary ?? "");
+  const [details, setDetails] = useState(initialPost?.details ?? "");
+  const [errors, setErrors] = useState<string[]>([]);
 
   const instructors = users.filter(
-    (user) => user.role === "FACULTY" || user.role === "ADMIN",
+    (user) =>
+      user.role === "FACULTY" || user.role === "TA" || user.role === "ADMIN",
   );
   const otherUsers = users.filter(
-    (user) => user.role !== "FACULTY" && user.role !== "ADMIN",
+    (user) =>
+      user.role !== "FACULTY" && user.role !== "TA" && user.role !== "ADMIN",
   );
   const allInstructorsSelected =
     instructors.length > 0 &&
@@ -47,16 +69,65 @@ export default function NewPostForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Stage 3 intentionally does not create posts or change the shared fixtures.
-    setNotice(true);
+
+    // Quill can represent an empty editor as HTML such as <p><br></p>.
+    const readableDetails = normalizeSummary(details.replace(/<[^>]*>/g, " "));
+    const cleanSummary = normalizeSummary(summary);
+    const nextErrors: string[] = [];
+    if (!currentUser) nextErrors.push("Sign in to create a post.");
+    if (selectedFolderIds.length === 0)
+      nextErrors.push("Select at least one folder.");
+    if (!cleanSummary) nextErrors.push("Enter a summary.");
+    if (cleanSummary.length > 100)
+      nextErrors.push("The summary must be 100 characters or fewer.");
+    if (!readableDetails) nextErrors.push("Enter post details.");
+    if (audience === "SELECTED_USERS" && recipientIds.length === 0)
+      nextErrors.push("Select at least one recipient.");
+
+    setErrors(nextErrors);
+    if (nextErrors.length > 0 || !currentUser) return;
+
+    if (initialPost) {
+      onUpdatePost?.({
+        ...initialPost,
+        type,
+        audience,
+        recipientIds: audience === "ENTIRE_CLASS" ? [] : [...recipientIds],
+        folderIds: [...selectedFolderIds],
+        summary: cleanSummary,
+        details,
+      });
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    onCreatePost({
+      _id: crypto.randomUUID(),
+      courseId,
+      authorId: currentUser._id,
+      type,
+      audience,
+      recipientIds: audience === "ENTIRE_CLASS" ? [] : recipientIds,
+      folderIds: [...selectedFolderIds],
+      summary: cleanSummary,
+      details,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      viewCount: 0,
+      readByUserIds: [currentUser._id],
+    });
   }
 
   return (
     <form onSubmit={onSubmit} className="max-w-3xl space-y-5">
       <div>
-        <h2 className="text-xl font-semibold">New Post</h2>
+        <h2 className="text-xl font-semibold">
+          {initialPost ? "Edit Post" : "New Post"}
+        </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Compose a question or note for your course.
+          {initialPost
+            ? "Update your question or note."
+            : "Compose a question or note for your course."}
         </p>
       </div>
 
@@ -70,7 +141,7 @@ export default function NewPostForm({
               checked={type === "QUESTION"}
               onChange={() => {
                 setType("QUESTION");
-                setNotice(false);
+                setErrors([]);
               }}
             />
             Question
@@ -82,7 +153,7 @@ export default function NewPostForm({
               checked={type === "NOTE"}
               onChange={() => {
                 setType("NOTE");
-                setNotice(false);
+                setErrors([]);
               }}
             />
             Note
@@ -100,7 +171,7 @@ export default function NewPostForm({
               checked={audience === "ENTIRE_CLASS"}
               onChange={() => {
                 setAudience("ENTIRE_CLASS");
-                setNotice(false);
+                setErrors([]);
               }}
             />
             Entire Class
@@ -112,7 +183,7 @@ export default function NewPostForm({
               checked={audience === "SELECTED_USERS"}
               onChange={() => {
                 setAudience("SELECTED_USERS");
-                setNotice(false);
+                setErrors([]);
               }}
             />
             Individual Students/Instructors
@@ -197,7 +268,7 @@ export default function NewPostForm({
           value={summary}
           onChange={(event) => {
             setSummary(event.target.value);
-            setNotice(false);
+            setErrors([]);
           }}
         />
         <p className="mt-1 text-right text-xs text-gray-600">
@@ -216,26 +287,32 @@ export default function NewPostForm({
           value={details}
           onChange={(value) => {
             setDetails(value);
-            setNotice(false);
+            setErrors([]);
           }}
         />
       </div>
 
-      {notice && (
-        <p
-          role="status"
-          className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"
+      {errors.length > 0 && (
+        <div
+          role="alert"
+          className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800"
         >
-          This is the Stage 3 interface preview. Publishing and validation will
-          be implemented during Days 5–7; no post has been saved.
-        </p>
+          <p className="font-semibold">Please correct the following:</p>
+          <ul className="mt-1 list-disc pl-5">
+            {errors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="flex flex-wrap gap-3">
         <button
           type="submit"
           className="rounded bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
         >
-          Post {type === "QUESTION" ? "Question" : "Note"}
+          {initialPost
+            ? "Save Changes"
+            : `Post ${type === "QUESTION" ? "Question" : "Note"}`}
         </button>
         <button
           type="button"

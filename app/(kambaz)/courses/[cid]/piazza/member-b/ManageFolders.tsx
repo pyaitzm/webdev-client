@@ -1,34 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ManageFoldersProps } from "../shared/componentContracts";
 import type { PazzaFolder } from "../shared/types";
+import { usePazzaStore } from "./pazzaStore";
+import { usePazzaPostsStore } from "../store/postsStore";
 
 type Props = ManageFoldersProps;
 const instructor = (role: string | undefined) =>
   ["FACULTY", "TA", "ADMIN"].includes(role ?? "");
 
-/** Local-state version of the folder administration UI; persistence is added later. */
+/** Store folder records per course and keep unsaved edits in this screen. */
 export default function ManageFolders({
   course,
   currentUser,
-  folders,
+  folders: items,
   onFoldersChanged,
 }: Props) {
-  const [items, setItems] = useState(
-    folders.filter((folder) => folder.courseId === course._id),
-  );
+  const setFolders = usePazzaStore((state) => state.setFolders);
+  const posts = usePazzaPostsStore((state) => state.posts);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  useEffect(
-    () => setItems(folders.filter((folder) => folder.courseId === course._id)),
-    [course._id, folders],
-  );
+  const [notice, setNotice] = useState("");
   const canManage = instructor(currentUser?.role);
   const save = (next: PazzaFolder[]) => {
-    setItems(next);
+    if (!canManage) return;
+    setFolders(course._id, next);
     onFoldersChanged?.();
   };
   if (!canManage)
@@ -47,6 +46,11 @@ export default function ManageFolders({
     >
       <h2 className="text-xl font-semibold">Manage Folders</h2>
       <p className="mt-1 text-sm text-slate-500">Folders for {course.name}</p>
+      {notice && (
+        <p role="alert" className="mt-2 text-sm text-red-700">
+          {notice}
+        </p>
+      )}
       <div className="mt-4 flex gap-2">
         <input
           aria-label="New folder name"
@@ -81,6 +85,19 @@ export default function ManageFolders({
           className="rounded border border-red-700 px-3 py-2 text-sm text-red-700 disabled:border-slate-300 disabled:text-slate-400"
           disabled={!selected.length}
           onClick={() => {
+            if (
+              posts.some(
+                (post) =>
+                  post.courseId === course._id &&
+                  post.folderIds.some((id) => selected.includes(id)),
+              )
+            ) {
+              setNotice(
+                "A selected folder is in use. Move its posts before deleting it.",
+              );
+              return;
+            }
+            setNotice("");
             save(items.filter((folder) => !selected.includes(folder._id)));
             setSelected([]);
           }}
