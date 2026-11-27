@@ -28,7 +28,7 @@ export default function ManageFoldersPage() {
   const { currentUser } = useAccountContext();
   const course = courses.find((item) => item._id === courseId);
   const user = toPazzaUser(currentUser);
-  const folders = usePazzaStore(state => state.folders);
+  const folders = usePazzaStore((state) => state.folders);
 
   if (!course) {
     return (
@@ -56,7 +56,7 @@ export default function ManageFoldersPage() {
       key={courseId}
       course={{ _id: course._id, name: course.name }}
       currentUser={user}
-      folders={folders.filter(folder => folder.courseId === courseId)}
+      folders={folders.filter((folder) => folder.courseId === courseId)}
     />
   );
 }

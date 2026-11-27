@@ -75,8 +75,7 @@ export default function ClassAtAGlance({
         ))}
       </div>
       <p className="text-xs text-gray-500">
-        Post and unread counts update with your changes. Answer counts currently
-        use sample answers until the shared answer store is integrated.
+        Post, answer, and unread counts update as you make changes.
       </p>
     </section>
   );

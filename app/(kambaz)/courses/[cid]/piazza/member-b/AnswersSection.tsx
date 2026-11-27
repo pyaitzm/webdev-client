@@ -5,6 +5,7 @@ import type { AnswersProps } from "../shared/componentContracts";
 import type { AnswerKind, PazzaAnswer, PazzaUser } from "../shared/types";
 import AnswerRichTextEditor, { isRichTextBlank } from "./AnswerRichTextEditor";
 import { usePazzaStore } from "./pazzaStore";
+import { sanitizePostDetails } from "../shared/sanitizeRichText";
 
 const displayName = (userId: string, users: PazzaUser[]) => {
   const user = users.find((candidate) => candidate._id === userId);
@@ -15,6 +16,22 @@ const isInstructor = (user: PazzaUser | null) =>
   user?.role === "FACULTY" || user?.role === "TA" || user?.role === "ADMIN";
 
 type Props = AnswersProps & { users?: PazzaUser[] };
+
+/** Render sanitized rich text after hydration; never insert raw answer HTML. */
+function SafeAnswerContent({ content }: { content: string }) {
+  const [rendered, setRendered] = useState({ source: "", html: "" });
+  useEffect(() => {
+    setRendered({ source: content, html: sanitizePostDetails(content) });
+  }, [content]);
+  return rendered.source === content ? (
+    <div
+      className="mt-1 max-w-none text-slate-700"
+      dangerouslySetInnerHTML={{ __html: rendered.html }}
+    />
+  ) : (
+    <div className="mt-1 text-slate-700">Loading formatted answer…</div>
+  );
+}
 
 /** UI-only Day 2–4 answer section. API persistence is added in the next project phase. */
 export default function AnswersSection({
@@ -51,7 +68,8 @@ export default function AnswersSection({
   };
 
   const addAnswer = () => {
-    if (post.type !== "QUESTION" || isRichTextBlank(draft) || !currentUser) return;
+    if (post.type !== "QUESTION" || isRichTextBlank(draft) || !currentUser)
+      return;
     const now = new Date().toISOString();
     saveItems([
       ...items,
@@ -71,7 +89,8 @@ export default function AnswersSection({
 
   const canManage = (answer: PazzaAnswer) =>
     currentUser &&
-    (isInstructor(currentUser) || (answer.kind === "STUDENT" && answer.authorId === currentUser._id));
+    (isInstructor(currentUser) ||
+      (answer.kind === "STUDENT" && answer.authorId === currentUser._id));
 
   const renderGroup = (
     title: string,
@@ -137,10 +156,7 @@ export default function AnswersSection({
                   </button>
                 </div>
               ) : (
-                <div
-                  className="prose prose-sm mt-1 max-w-none text-slate-700"
-                  dangerouslySetInnerHTML={{ __html: answer.content }}
-                />
+                <SafeAnswerContent content={answer.content} />
               )}
               {canManage(answer) && editingId !== answer._id ? (
                 <div className="mt-2 flex gap-3 text-sm">

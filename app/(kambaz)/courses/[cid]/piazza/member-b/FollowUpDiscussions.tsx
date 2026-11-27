@@ -25,10 +25,12 @@ export default function FollowUpDiscussions({
   onDiscussionsChanged,
 }: Props) {
   const updateDiscussions = usePazzaStore((s) => s.setDiscussions);
-  const deleteReply = usePazzaStore(state => state.deleteReply);
+  const deleteReply = usePazzaStore((state) => state.deleteReply);
   const updateReplies = usePazzaStore((s) => s.setReplies);
-  const setDiscussionItems = (items: PazzaDiscussion[]) => updateDiscussions(course._id, post._id, items);
-  const setReplyItems = (items: PazzaReply[]) => updateReplies(course._id, post._id, items);
+  const setDiscussionItems = (items: PazzaDiscussion[]) =>
+    updateDiscussions(course._id, post._id, items);
+  const setReplyItems = (items: PazzaReply[]) =>
+    updateReplies(course._id, post._id, items);
   const [newDiscussion, setNewDiscussion] = useState("");
   const [replyTarget, setReplyTarget] = useState<{
     discussionId: string;
@@ -79,10 +81,17 @@ export default function FollowUpDiscussions({
     setNewDiscussion("");
     changed();
   };
-  const activeReplyTarget = replyTarget && discussionItems.some(d => d._id === replyTarget.discussionId)
-    && (replyTarget.parentReplyId === null || replyItems.some(r =>
-      r._id === replyTarget.parentReplyId && r.discussionId === replyTarget.discussionId))
-    ? replyTarget : null;
+  const activeReplyTarget =
+    replyTarget &&
+    discussionItems.some((d) => d._id === replyTarget.discussionId) &&
+    (replyTarget.parentReplyId === null ||
+      replyItems.some(
+        (r) =>
+          r._id === replyTarget.parentReplyId &&
+          r.discussionId === replyTarget.discussionId,
+      ))
+      ? replyTarget
+      : null;
   const addReply = () => {
     if (!currentUser || !activeReplyTarget || !replyDraft.trim()) return;
     const now = new Date().toISOString();
@@ -341,7 +350,11 @@ export default function FollowUpDiscussions({
                       type="button"
                       className="underline"
                       onClick={() => {
-                        setDiscussionItems(discussionItems.filter((item) => item._id !== discussion._id));
+                        setDiscussionItems(
+                          discussionItems.filter(
+                            (item) => item._id !== discussion._id,
+                          ),
+                        );
                         changed();
                       }}
                     >

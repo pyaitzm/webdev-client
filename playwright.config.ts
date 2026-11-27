@@ -10,7 +10,9 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: { baseURL, channel: process.env.PLAYWRIGHT_CHANNEL },
   webServer: {
-    command: production ? `npm run start -- -H 127.0.0.1 -p ${port}` : `npm run dev -- --webpack -H 127.0.0.1 -p ${port}`,
+    command: production
+      ? `npm run start -- -H 127.0.0.1 -p ${port}`
+      : `npm run dev -- --webpack -H 127.0.0.1 -p ${port}`,
     url: baseURL + "/account/signin",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
