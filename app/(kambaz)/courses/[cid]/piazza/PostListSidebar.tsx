@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PazzaPost, PazzaUser } from "./shared/types";
+import { normalizeSummary } from "./shared/normalizeSummary";
 
 type PostListSidebarProps = {
   posts: PazzaPost[];
@@ -38,11 +39,8 @@ function groupLabel(createdAt: string, now: Date): string {
 }
 
 function plainText(html: string): string {
-  // Sample post details are HTML; show a text-only preview in the sidebar.
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Show readable text without carrying HTML tags or encoded spaces.
+  return normalizeSummary(html.replace(/<[^>]*>/g, " "));
 }
 
 export default function PostListSidebar({
@@ -58,7 +56,7 @@ export default function PostListSidebar({
   const now = new Date();
   const sorted = [...posts]
     .filter((post) =>
-      `${post.summary} ${plainText(post.details)}`
+      `${normalizeSummary(post.summary)} ${plainText(post.details)}`
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
     )
@@ -158,7 +156,9 @@ export default function PostListSidebar({
                       }
                       className={`my-1 block w-full rounded border p-3 text-left text-sm hover:bg-blue-50 ${selectedPostId === post._id ? "border-blue-700 bg-blue-50" : "border-gray-200"}`}
                     >
-                      <span className="block font-bold">{post.summary}</span>
+                      <span className="block font-bold">
+                        {normalizeSummary(post.summary)}
+                      </span>
                       <span className="mt-1 block text-xs text-gray-600">
                         {authorRole} ·{" "}
                         {new Date(post.createdAt).toLocaleString()}

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ClassAtAGlanceData } from "./shared/componentContracts";
+import { calculateClassStatistics } from "./classStatistics";
 
 /** Course activity summary using the same temporary data as the post list. */
 export default function ClassAtAGlance({
@@ -10,32 +11,20 @@ export default function ClassAtAGlance({
   enrolledStudentCount,
   currentUser,
 }: ClassAtAGlanceData) {
-  const questionIds = new Set(
-    posts.filter((post) => post.type === "QUESTION").map((post) => post._id),
-  );
-  const answeredQuestionIds = new Set(
-    answers
-      .filter((answer) => questionIds.has(answer.postId))
-      .map((answer) => answer.postId),
-  );
-  const unansweredCount = questionIds.size - answeredQuestionIds.size;
-  const instructorResponses = answers.filter(
-    (answer) => answer.kind === "INSTRUCTOR",
-  ).length;
-  const studentResponses = answers.filter(
-    (answer) => answer.kind === "STUDENT",
-  ).length;
-  const unreadCount = currentUser
-    ? posts.filter((post) => !post.readByUserIds.includes(currentUser._id))
-        .length
-    : null;
+  const stats = calculateClassStatistics({
+    course,
+    posts,
+    answers,
+    enrolledStudentCount,
+    currentUser,
+  });
 
   const metrics = [
-    { label: "Total Posts", value: posts.length },
-    { label: "Unanswered Posts", value: unansweredCount },
-    { label: "Instructor Responses", value: instructorResponses },
-    { label: "Student Responses", value: studentResponses },
-    { label: "Enrolled Students", value: enrolledStudentCount },
+    { label: "Total Posts", value: stats.totalPosts },
+    { label: "Unanswered Posts", value: stats.unansweredPosts },
+    { label: "Instructor Responses", value: stats.instructorResponses },
+    { label: "Student Responses", value: stats.studentResponses },
+    { label: "Enrolled Students", value: stats.enrolledStudents },
   ];
 
   return (
@@ -58,15 +47,15 @@ export default function ClassAtAGlance({
         aria-label="Unread posts status"
       >
         <h3 className="text-sm font-semibold text-gray-700">Unread Posts</h3>
-        {unreadCount === null ? (
+        {stats.unreadCount === null ? (
           <p className="mt-1 text-sm text-gray-600">
             Sign in to see your unread posts.
           </p>
         ) : (
           <p className="mt-1 text-lg font-semibold text-blue-900">
-            {unreadCount === 0
+            {stats.unreadCount === 0
               ? "No unread posts"
-              : `${unreadCount} unread ${unreadCount === 1 ? "post" : "posts"}`}
+              : `${stats.unreadCount} unread ${stats.unreadCount === 1 ? "post" : "posts"}`}
           </p>
         )}
       </div>
@@ -86,8 +75,8 @@ export default function ClassAtAGlance({
         ))}
       </div>
       <p className="text-xs text-gray-500">
-        Preview statistics based on sample Pazza posts and answers and current
-        Kambaz enrollments.
+        Post and unread counts update with your changes. Answer counts currently
+        use sample answers until the shared answer store is integrated.
       </p>
     </section>
   );
