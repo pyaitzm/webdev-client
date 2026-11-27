@@ -12,7 +12,25 @@ export default function Labs() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        GitHub Repository
+        webdev-client GitHub Repository
+      </a>
+      <br />
+      <a
+        href="https://github.com/pyaitzm/webdev-server"
+        id="wd-github"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        webdev-server GitHub Repository
+      </a>
+      <br />
+      <a
+        href="https://webdev-server-qcrh.onrender.com"
+        id="wd-github"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        webdev-server Render
       </a>
       <ul>
         <li>
